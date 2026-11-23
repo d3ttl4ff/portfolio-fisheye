@@ -1,15 +1,57 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #ededed;
+  --foreground: #0a0a0a;
+
+  --color-master-black: rgb(14, 14, 14);
+  --color-master-white: rgb(251, 251, 231);
+  --color-master-white-light: rgb(216, 216, 216);
+  --color-master-grey: rgba(39, 39, 39);
+
+  --color-master-gold-darker: rgb(61, 45, 32);
+  --color-master-gold-dark: rgb(126, 110, 70);
+  --color-master-gold-base: rgb(177, 159, 112);
+  --color-master-gold-light: rgb(233, 203, 137);
+  --color-master-gold-lighter: rgb(248, 243, 232);
+
+  --color-master-green-base: rgb(69, 106, 75);
+  --color-master-green-light: rgb(89, 94, 68);
+  --color-master-green-lighter: rgb(177, 187, 136);
+
+  --color-master-teal-dark: rgb(29, 59, 62);
+  --color-master-teal-base: rgb(47, 93, 98);
+  --color-master-teal-light: rgb(137, 179, 176);
+
+  --color-master-red-base: rgb(150, 50, 50);
 }
 
 @theme inline {
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-foreground: var(--background);
+
+  --font-blender: var(--font-blender);
+
+  --color-master-black: var(--color-master-black);
+  --color-master-white: var(--color-master-white);
+  --color-master-white-light: var(--color-master-white-light);
+  --color-master-grey: var(--color-master-grey);
+
+  --color-master-gold-darker: var(--color-master-gold-darker);
+  --color-master-gold-dark: var(--color-master-gold-dark);
+  --color-master-gold-base: var(--color-master-gold-base);
+  --color-master-gold-light: var(--color-master-gold-light);
+  --color-master-gold-lighter: var(--color-master-gold-lighter);
+
+  --color-master-green-base: var(--color-master-green-base);
+  --color-master-green-light: var(--color-master-green-light);
+  --color-master-green-lighter: var(--color-master-green-lighter);
+
+  --color-master-teal-dark: var(--color-master-teal-dark);
+  --color-master-teal-base: var(--color-master-teal-base);
+  --color-master-teal-light: var(--color-master-teal-light);
+
+  --color-master-red-base: var(--color-master-red-base);
 }
 
 @media (prefers-color-scheme: dark) {
