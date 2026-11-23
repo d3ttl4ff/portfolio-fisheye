@@ -17,6 +17,7 @@
     "leva": "^0.10.1",
     "next": "16.4.6",
     "postprocessing": "^6.39.6",
+    "r3f-perf": "^7.2.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "tailwind-merge": "^3.7.1",
