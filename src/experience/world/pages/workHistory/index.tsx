@@ -1,1 +1,1 @@
-export { default as CareerText } from './CareerText';
+export { default as WorkHistory } from './WorkHistory';

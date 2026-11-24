@@ -12,7 +12,8 @@ import {
 const navLinks = [
   { label: 'Home', path: '/' },
   { label: 'Experience', path: '/' },
-  { label: 'Projekts', path: '/' },
+  // { label: 'Projekts', path: '/' },
+  { label: 'Education', path: '/' },
   { label: 'Social', path: '/' },
   { label: 'About Me', path: '/' },
 ];
@@ -292,7 +293,7 @@ const NavigationLink = ({
                     // Combine waves to create more organic movement
                     float height = 0.4 + wave1 * 0.25 + wave2 * 0.15;
 
-                    return clamp(height, 0.08, 0.95);
+                    return clamp(height, 0.2, 1.2);
                 }
 
                 void main() {

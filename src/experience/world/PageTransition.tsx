@@ -3,7 +3,8 @@ import { gsap } from 'gsap';
 import type { Group, Mesh } from 'three';
 
 import Hero from './Hero';
-import WorkHistory from './WorkHistory';
+import WorkHistory from '@/experience/world/pages/workHistory/WorkHistory';
+import Education from '@/experience/world/pages/education/Education';
 
 type Transition = {
   from: number | null;
@@ -20,6 +21,9 @@ const PageContent = ({ index }: { index: number }) => {
 
     case 1:
       return <WorkHistory />;
+
+    // case 2:
+    //   return <Education />;
 
     default:
       return null;

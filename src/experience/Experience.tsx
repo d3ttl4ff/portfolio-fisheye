@@ -33,7 +33,7 @@ const Experience = () => {
 
   return (
     <>
-      <color args={['#05070f']} attach="background" />
+      {/* <color args={['#05070f']} attach="background" /> */}
 
       {/* <Effects /> */}
 

@@ -1,12 +1,17 @@
-import { useRef, useMemo, useEffect, useCallback } from 'react';
+import {
+  useRef,
+  useMemo,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+} from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RoundedBox } from '@react-three/drei';
 
-import { careers } from './pages/workHistory/careerData';
-import CareerEntry from './pages/workHistory/CareerEntry';
-
-const GREEN = '#729252';
+import { COLORS } from '@/experience/lib/colors';
+import { careers } from '@/experience/lib/careerData';
+import CareerEntry from './CareerEntry';
 
 const VIEWPORT_HEIGHT = 1.5;
 const ENTRY_SPACING = 0.4;
@@ -16,6 +21,45 @@ const SCROLL_SPEED = 0.0015;
 const SCROLL_SMOOTHING = 12;
 const VISIBLE_BUFFER = 2;
 
+// Supplements
+const TimelineLine = ({
+  height,
+  color,
+}: {
+  height: number;
+  color: 'colorI' | 'colorII' | 'gradient';
+}) => {
+  const dotSpacing = 0.025;
+  const dotCount = Math.floor(height / dotSpacing);
+
+  const greenColor = useMemo(() => new THREE.Color(COLORS.COLORI), []);
+  const redColor = useMemo(() => new THREE.Color(COLORS.COLORII), []);
+
+  return (
+    <group>
+      {Array.from({ length: dotCount - 1 }, (_, i) => {
+        // Gradient transitions from green (top) to red (bottom)
+        const progress = (i + 1) / dotCount;
+
+        const dotColor =
+          color === 'gradient'
+            ? greenColor.clone().lerp(redColor, progress)
+            : color === 'colorI'
+              ? greenColor
+              : redColor;
+
+        return (
+          <mesh key={i} position={[0, -(i + 1) * dotSpacing, 0]}>
+            <sphereGeometry args={[0.0025, 8, 8]} />
+            <meshBasicMaterial color={dotColor} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+};
+
+// Main
 const WorkHistory = () => {
   const contentRef = useRef<THREE.Group>(null);
   const thumbRef = useRef<THREE.Mesh>(null);
@@ -23,6 +67,10 @@ const WorkHistory = () => {
   const entryRefs = useRef<(THREE.Group | null)[]>([]);
 
   const { gl } = useThree();
+
+  // Determine whether a career is current based on its end date
+  const isCurrent = (career: (typeof careers)[number]) =>
+    career.endDate.toLowerCase() === 'current';
 
   const contentHeight =
     careers.length > 0
@@ -61,8 +109,6 @@ const WorkHistory = () => {
     (pointerY: number) => {
       if (trackTravel <= 0) return 0;
 
-      // Top of track = travel/2, bottom = -travel/2
-      // progress 0 (top) → scroll 0, progress 1 (bottom) → scroll maxScroll
       const progress = THREE.MathUtils.clamp(
         (trackTravel / 2 - pointerY) / trackTravel,
         0,
@@ -87,7 +133,6 @@ const WorkHistory = () => {
       dragStartY.current = event.point.y;
       dragStartScroll.current = targetScroll.current;
 
-      // Capture pointer so we receive move/up even outside the mesh
       const nativeEvent = (event as unknown as { nativeEvent?: PointerEvent })
         .nativeEvent;
 
@@ -95,7 +140,6 @@ const WorkHistory = () => {
         gl.domElement.setPointerCapture(nativeEvent.pointerId);
       }
 
-      // Set grab cursor
       gl.domElement.style.cursor = 'grabbing';
     },
     [gl],
@@ -127,11 +171,8 @@ const WorkHistory = () => {
       if (!isDragging.current) return;
       event.stopPropagation();
 
-      // Compute delta in world Y from drag start
       const deltaY = event.point.y - dragStartY.current;
 
-      // Moving thumb down (negative deltaY) = scrolling content up (positive scroll)
-      // Track travel maps to full maxScroll range
       if (trackTravel > 0) {
         const scrollDelta = -(deltaY / trackTravel) * maxScroll;
         targetScroll.current = THREE.MathUtils.clamp(
@@ -161,13 +202,46 @@ const WorkHistory = () => {
     [pointerYToScroll],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const previousClippingState = gl.localClippingEnabled;
+
     gl.localClippingEnabled = true;
 
+    const content = contentRef.current;
+
+    if (!content) return;
+
+    content.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+
+      const materials = Array.isArray(object.material)
+        ? object.material
+        : [object.material];
+
+      materials.forEach((material) => {
+        material.clippingPlanes = clippingPlanes;
+        material.clipIntersection = false;
+        material.needsUpdate = true;
+      });
+    });
+
     return () => {
-      gl.localClippingEnabled = false;
+      content.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return;
+
+        const materials = Array.isArray(object.material)
+          ? object.material
+          : [object.material];
+
+        materials.forEach((material) => {
+          material.clippingPlanes = null;
+          material.needsUpdate = true;
+        });
+      });
+
+      gl.localClippingEnabled = previousClippingState;
     };
-  }, [gl]);
+  }, [gl, clippingPlanes]);
 
   useFrame((_, delta) => {
     scrollPosition.current +=
@@ -182,7 +256,6 @@ const WorkHistory = () => {
 
     if (thumbRef.current) {
       const progress = maxScroll > 0 ? currentScroll / maxScroll : 0;
-
       const travel = (VIEWPORT_HEIGHT - thumbHeight) / 2;
 
       thumbRef.current.position.y = travel - progress * travel * 2;
@@ -193,6 +266,7 @@ const WorkHistory = () => {
       0,
       Math.floor(currentScroll / ENTRY_SPACING) - VISIBLE_BUFFER,
     );
+
     const end = Math.min(
       careers.length - 1,
       Math.ceil((currentScroll + VIEWPORT_HEIGHT) / ENTRY_SPACING) +
@@ -252,20 +326,48 @@ const WorkHistory = () => {
 
       {/* Career content — all entries stay mounted, visibility toggled via refs */}
       <group ref={contentRef}>
-        {careers.map((career, index) => (
-          <group
-            key={career.company}
-            ref={(el: THREE.Group | null) => {
-              entryRefs.current[index] = el;
-            }}
-          >
-            <CareerEntry
-              career={career}
-              y={VIEWPORT_HEIGHT / 2 - ENTRY_HEIGHT / 2 - index * ENTRY_SPACING}
-              clippingPlanes={clippingPlanes}
-            />
-          </group>
-        ))}
+        {careers.map((career, index) => {
+          const entryY =
+            VIEWPORT_HEIGHT / 2 - ENTRY_HEIGHT / 2 - index * ENTRY_SPACING;
+
+          const nextCareer = careers[index + 1];
+
+          // Determine the connecting line color from both adjacent careers
+          const currentIsActive = isCurrent(career);
+          const nextIsActive = nextCareer ? isCurrent(nextCareer) : false;
+
+          const lineColor: 'colorI' | 'colorII' | 'gradient' =
+            currentIsActive && nextIsActive
+              ? 'colorI'
+              : currentIsActive && !nextIsActive
+                ? 'gradient'
+                : 'colorII';
+
+          return (
+            <group key={`${career.company}-${index}`}>
+              {/* Dotted connecting line */}
+              {nextCareer && (
+                <group position={[-1.04, entryY, 0.01]}>
+                  <TimelineLine height={ENTRY_SPACING} color={lineColor} />
+                </group>
+              )}
+
+              {/* Career entry */}
+              <group
+                ref={(el: THREE.Group | null) => {
+                  entryRefs.current[index] = el;
+                }}
+              >
+                <CareerEntry
+                  index={index}
+                  career={career}
+                  y={entryY}
+                  clippingPlanes={clippingPlanes}
+                />
+              </group>
+            </group>
+          );
+        })}
       </group>
 
       {/* Scrollbar track (clickable — jumps to position) */}
@@ -283,14 +385,8 @@ const WorkHistory = () => {
         onPointerOver={handleThumbHover}
         onPointerOut={handleThumbUnhover}
       >
-        <RoundedBox
-          args={[0.015, 1, 0.01]}
-          radius={0.005}
-          smoothness={4}
-          bevelSegments={4}
-        >
-          <meshBasicMaterial color={GREEN} />
-        </RoundedBox>
+        <planeGeometry args={[0.01, 1]} />
+        <meshBasicMaterial color={COLORS.COLORI} />
       </mesh>
     </group>
   );
