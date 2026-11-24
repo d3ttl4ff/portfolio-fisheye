@@ -61,7 +61,7 @@ const PulsatingDot = () => {
       </mesh>
 
       <mesh>
-        <sphereGeometry args={[0.008, 16, 16]} />
+        <sphereGeometry args={[0.006, 16, 16]} />
         <meshBasicMaterial color={COLORS.COLORI} />
       </mesh>
     </group>
@@ -79,7 +79,7 @@ const TimelineDot = ({ active }: { active: boolean }) => {
       </mesh>
 
       <mesh>
-        <sphereGeometry args={[0.008, 16, 16]} />
+        <sphereGeometry args={[0.006, 16, 16]} />
         <meshBasicMaterial color={COLORS.COLORII} />
       </mesh>
     </group>
