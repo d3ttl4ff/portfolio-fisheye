@@ -7,9 +7,6 @@ import { COLORS } from '@/experience/lib/colors';
 import { CareerEntry as CareerEntryType } from '@/experience/lib/careerData';
 import CareerText from './CareerText';
 
-const BLACK = '#060e17';
-const WHITE = '#ffffff';
-
 type Props = {
   index: number;
   career: CareerEntryType;
@@ -89,7 +86,7 @@ const TimelineDot = ({ active }: { active: boolean }) => {
 // Main
 const CareerEntry = memo(({ index, career, y, clippingPlanes }: Props) => {
   const entryRef = useRef<THREE.Group>(null);
-  const companyTextWidth = Math.max(0.1, career.company.length * 0.019 + 0.08);
+  const companyTextWidth = Math.max(0.1, career.company.length * 0.0185 + 0.08);
 
   const zPos = -0.01;
 
@@ -127,7 +124,11 @@ const CareerEntry = memo(({ index, career, y, clippingPlanes }: Props) => {
           </RoundedBox>
         </mesh>
 
-        <CareerText position={[-0.97, 0, 0]} fontSize={0.06} color={BLACK}>
+        <CareerText
+          position={[-0.97, 0, 0]}
+          fontSize={0.06}
+          color={COLORS.BLACK}
+        >
           {career.position.toUpperCase()}
         </CareerText>
 
@@ -170,19 +171,19 @@ const CareerEntry = memo(({ index, career, y, clippingPlanes }: Props) => {
           {`@`}
         </CareerText>
 
-        <mesh position={[companyTextWidth / 2 + 0.05, 0, zPos]}>
+        <mesh position={[companyTextWidth / 2 + 0.04, 0, zPos]}>
           <RoundedBox
             args={[companyTextWidth, 0.05, 0.01]}
             radius={0.005}
             smoothness={2}
             bevelSegments={2}
           >
-            <meshBasicMaterial color={WHITE} />
+            <meshBasicMaterial color={COLORS.WHITE} />
           </RoundedBox>
         </mesh>
 
-        <group position={[0.08, 0, 0]}>
-          <CareerText fontSize={0.045} color={BLACK}>
+        <group position={[0.065, 0, 0]}>
+          <CareerText fontSize={0.045} color={COLORS.BLACK}>
             {career.company}
           </CareerText>
         </group>
@@ -193,7 +194,7 @@ const CareerEntry = memo(({ index, career, y, clippingPlanes }: Props) => {
             position={[-0.015, 0, 0]}
             font="Blender Pro Medium.ttf"
             fontSize={0.045}
-            color={WHITE}
+            color={COLORS.WHITE}
           >
             {career.mode.toLowerCase() === 'remote'
               ? '📡'
@@ -206,7 +207,7 @@ const CareerEntry = memo(({ index, career, y, clippingPlanes }: Props) => {
             <CareerText
               font="Blender Pro Medium.ttf"
               fontSize={0.045}
-              color={WHITE}
+              color={COLORS.WHITE}
             >
               {`${career.mode}`}
             </CareerText>
@@ -236,7 +237,7 @@ const CareerEntry = memo(({ index, career, y, clippingPlanes }: Props) => {
           position={[0.05, 0, 0]}
           font="Blender Pro Medium.ttf"
           fontSize={0.04}
-          color={WHITE}
+          color={COLORS.WHITE}
           anchorY="top"
         >
           {descriptionText}

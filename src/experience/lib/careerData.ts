@@ -44,17 +44,7 @@ export const careers: CareerEntry[] = [
     desc: ['Led the UI/UX Design and Frontend Development teams.'],
   },
   {
-    position: 'Frontend Developer',
-    company: 'Xaventra',
-    mode: 'Remote',
-    country: '🇱🇰',
-    location: 'Maharagama',
-    startDate: 'Oct 2024',
-    endDate: 'Feb 2025',
-    desc: ['Led the UI/UX Design and Frontend Development teams.'],
-  },
-  {
-    position: 'Frontend Developer',
+    position: 'Frontend Dev & UI/UX Designer',
     company: 'Xaventra',
     mode: 'Remote',
     country: '🇱🇰',

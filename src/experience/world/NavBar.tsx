@@ -8,6 +8,7 @@ import {
   type MeshBasicMaterial,
   type ShaderMaterial,
 } from 'three';
+import { COLORS } from '../lib/colors';
 
 const navLinks = [
   { label: 'Home', path: '/' },
@@ -24,7 +25,6 @@ const GAP = 0.07;
 const STRIP_WIDTH = 0.008;
 const STRIP_GAP = 0.003;
 
-const ROSE = new Color('#729252');
 const WHITE = new Color('#ffffff');
 
 const NavigationLink = ({
@@ -56,7 +56,7 @@ const NavigationLink = ({
   const isVisible = hovered || isActive;
 
   // Hover always takes color precedence
-  const targetColor = isActive ? ROSE : hovered ? WHITE : WHITE;
+  const targetColor = new Color(isActive ? COLORS.COLORI : WHITE);
 
   // Bracket positions
   const bracketOffset = textWidth / 2 + 0.025;
@@ -354,7 +354,7 @@ const NavigationLink = ({
             ref={leftBracketRef}
             font={FONT}
             fontSize={FONT_SIZE}
-            color="#729252"
+            color={COLORS.COLORI}
             anchorX="center"
             anchorY="middle"
             position={[-bracketOffset + 0.05, 0.01, 0.01]}
@@ -367,7 +367,7 @@ const NavigationLink = ({
             ref={rightBracketRef}
             font={FONT}
             fontSize={FONT_SIZE}
-            color="#729252"
+            color={COLORS.COLORI}
             anchorX="center"
             anchorY="middle"
             position={[bracketOffset - 0.05, 0.01, 0.01]}
