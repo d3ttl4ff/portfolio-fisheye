@@ -7,7 +7,6 @@ import {
 } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { RoundedBox } from '@react-three/drei';
 
 import { COLORS } from '@/experience/lib/colors';
 import { careers } from '@/experience/lib/careerData';
@@ -16,12 +15,16 @@ import CareerEntry from './CareerEntry';
 const VIEWPORT_HEIGHT = 1.5;
 const ENTRY_SPACING = 0.4;
 const ENTRY_HEIGHT = 0.4;
-
 const SCROLL_SPEED = 0.0015;
 const SCROLL_SMOOTHING = 12;
 const VISIBLE_BUFFER = 2;
 
-// Supplements
+const DOT_SPACING = 0.025;
+
+const isCurrent = (career: (typeof careers)[number]) =>
+  career.endDate.toLowerCase() === 'current';
+
+// Individual meshes — simple, reliable per-dot color (gradient lerp works correctly)
 const TimelineLine = ({
   height,
   color,
@@ -29,8 +32,7 @@ const TimelineLine = ({
   height: number;
   color: 'colorI' | 'colorII' | 'gradient';
 }) => {
-  const dotSpacing = 0.025;
-  const dotCount = Math.floor(height / dotSpacing);
+  const dotCount = Math.floor(height / DOT_SPACING);
 
   const greenColor = useMemo(() => new THREE.Color(COLORS.COLORI), []);
   const redColor = useMemo(() => new THREE.Color(COLORS.COLORII), []);
@@ -38,9 +40,7 @@ const TimelineLine = ({
   return (
     <group>
       {Array.from({ length: dotCount - 1 }, (_, i) => {
-        // Gradient transitions from green (top) to red (bottom)
         const progress = (i + 1) / dotCount;
-
         const dotColor =
           color === 'gradient'
             ? greenColor.clone().lerp(redColor, progress)
@@ -49,7 +49,7 @@ const TimelineLine = ({
               : redColor;
 
         return (
-          <mesh key={i} position={[0, -(i + 1) * dotSpacing, 0]}>
+          <mesh key={i} position={[0, -(i + 1) * DOT_SPACING, 0]}>
             <sphereGeometry args={[0.0025, 8, 8]} />
             <meshBasicMaterial color={dotColor} />
           </mesh>
@@ -59,24 +59,18 @@ const TimelineLine = ({
   );
 };
 
-// Main
+// --- Main ---
 const WorkHistory = () => {
   const contentRef = useRef<THREE.Group>(null);
   const thumbRef = useRef<THREE.Mesh>(null);
-  const trackRef = useRef<THREE.Mesh>(null);
   const entryRefs = useRef<(THREE.Group | null)[]>([]);
 
   const { gl } = useThree();
-
-  // Determine whether a career is current based on its end date
-  const isCurrent = (career: (typeof careers)[number]) =>
-    career.endDate.toLowerCase() === 'current';
 
   const contentHeight =
     careers.length > 0
       ? ENTRY_HEIGHT + (careers.length + 1) * ENTRY_SPACING
       : 0;
-
   const maxScroll = Math.max(0, contentHeight - VIEWPORT_HEIGHT);
 
   const thumbHeight = Math.min(
@@ -84,11 +78,10 @@ const WorkHistory = () => {
     (VIEWPORT_HEIGHT * VIEWPORT_HEIGHT) /
       Math.max(contentHeight, VIEWPORT_HEIGHT),
   );
+  const trackTravel = VIEWPORT_HEIGHT - thumbHeight;
 
   const scrollPosition = useRef(0);
   const targetScroll = useRef(0);
-
-  // Drag state refs (no React re-renders)
   const isDragging = useRef(false);
   const dragStartY = useRef(0);
   const dragStartScroll = useRef(0);
@@ -101,26 +94,17 @@ const WorkHistory = () => {
     [],
   );
 
-  // The usable track travel distance (track height minus thumb height)
-  const trackTravel = VIEWPORT_HEIGHT - thumbHeight;
-
-  // Convert a pointer Y position in world space to a scroll value
   const pointerYToScroll = useCallback(
-    (pointerY: number) => {
+    (y: number) => {
       if (trackTravel <= 0) return 0;
-
-      const progress = THREE.MathUtils.clamp(
-        (trackTravel / 2 - pointerY) / trackTravel,
-        0,
-        1,
+      return (
+        THREE.MathUtils.clamp((trackTravel / 2 - y) / trackTravel, 0, 1) *
+        maxScroll
       );
-
-      return progress * maxScroll;
     },
     [trackTravel, maxScroll],
   );
 
-  // --- Pointer event handlers for scrollbar dragging ---
   const handleThumbPointerDown = useCallback(
     (
       event: THREE.Event & {
@@ -132,49 +116,37 @@ const WorkHistory = () => {
       isDragging.current = true;
       dragStartY.current = event.point.y;
       dragStartScroll.current = targetScroll.current;
-
-      const nativeEvent = (event as unknown as { nativeEvent?: PointerEvent })
+      const native = (event as unknown as { nativeEvent?: PointerEvent })
         .nativeEvent;
-
-      if (nativeEvent) {
-        gl.domElement.setPointerCapture(nativeEvent.pointerId);
-      }
-
+      if (native) gl.domElement.setPointerCapture(native.pointerId);
       gl.domElement.style.cursor = 'grabbing';
     },
     [gl],
   );
 
-  // Fallback: release drag if pointer leaves the canvas entirely
   useEffect(() => {
     const canvas = gl.domElement;
-
-    const handlePointerUp = () => {
+    const release = () => {
       if (isDragging.current) {
         isDragging.current = false;
         canvas.style.cursor = '';
       }
     };
-
-    canvas.addEventListener('pointerup', handlePointerUp);
-    canvas.addEventListener('pointercancel', handlePointerUp);
-
+    canvas.addEventListener('pointerup', release);
+    canvas.addEventListener('pointercancel', release);
     return () => {
-      canvas.removeEventListener('pointerup', handlePointerUp);
-      canvas.removeEventListener('pointercancel', handlePointerUp);
+      canvas.removeEventListener('pointerup', release);
+      canvas.removeEventListener('pointercancel', release);
     };
   }, [gl]);
 
-  // Track pointer movement on the invisible interaction area during drag
   const handleDragMove = useCallback(
     (event: { point: THREE.Vector3; stopPropagation: () => void }) => {
       if (!isDragging.current) return;
       event.stopPropagation();
-
-      const deltaY = event.point.y - dragStartY.current;
-
       if (trackTravel > 0) {
-        const scrollDelta = -(deltaY / trackTravel) * maxScroll;
+        const scrollDelta =
+          -((event.point.y - dragStartY.current) / trackTravel) * maxScroll;
         targetScroll.current = THREE.MathUtils.clamp(
           dragStartScroll.current + scrollDelta,
           0,
@@ -192,7 +164,6 @@ const WorkHistory = () => {
     }
   }, [gl]);
 
-  // Track click — jump scroll to clicked position
   const handleTrackClick = useCallback(
     (event: { point: THREE.Vector3; stopPropagation: () => void }) => {
       if (isDragging.current) return;
@@ -202,44 +173,52 @@ const WorkHistory = () => {
     [pointerYToScroll],
   );
 
+  const handleWheel = useCallback(
+    (event: { deltaY: number; stopPropagation: () => void }) => {
+      event.stopPropagation();
+      targetScroll.current = THREE.MathUtils.clamp(
+        targetScroll.current + event.deltaY * SCROLL_SPEED,
+        0,
+        maxScroll,
+      );
+    },
+    [maxScroll],
+  );
+
+  const handleThumbHover = useCallback(() => {
+    if (!isDragging.current) gl.domElement.style.cursor = 'grab';
+  }, [gl]);
+
+  const handleThumbUnhover = useCallback(() => {
+    if (!isDragging.current) gl.domElement.style.cursor = '';
+  }, [gl]);
+
   useLayoutEffect(() => {
-    const previousClippingState = gl.localClippingEnabled;
-
+    const prev = gl.localClippingEnabled;
     gl.localClippingEnabled = true;
-
     const content = contentRef.current;
-
     if (!content) return;
-
-    content.traverse((object) => {
-      if (!(object instanceof THREE.Mesh)) return;
-
-      const materials = Array.isArray(object.material)
-        ? object.material
-        : [object.material];
-
-      materials.forEach((material) => {
-        material.clippingPlanes = clippingPlanes;
-        material.clipIntersection = false;
-        material.needsUpdate = true;
+    content.traverse((obj) => {
+      if (!(obj instanceof THREE.Mesh)) return;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach((m) => {
+        m.clippingPlanes = clippingPlanes;
+        m.clipIntersection = false;
+        m.needsUpdate = true;
       });
     });
-
     return () => {
-      content.traverse((object) => {
-        if (!(object instanceof THREE.Mesh)) return;
-
-        const materials = Array.isArray(object.material)
-          ? object.material
-          : [object.material];
-
-        materials.forEach((material) => {
-          material.clippingPlanes = null;
-          material.needsUpdate = true;
+      content.traverse((obj) => {
+        if (!(obj instanceof THREE.Mesh)) return;
+        const mats = Array.isArray(obj.material)
+          ? obj.material
+          : [obj.material];
+        mats.forEach((m) => {
+          m.clippingPlanes = null;
+          m.needsUpdate = true;
         });
       });
-
-      gl.localClippingEnabled = previousClippingState;
+      gl.localClippingEnabled = prev;
     };
   }, [gl, clippingPlanes]);
 
@@ -248,65 +227,30 @@ const WorkHistory = () => {
       (targetScroll.current - scrollPosition.current) *
       (1 - Math.exp(-SCROLL_SMOOTHING * delta));
 
-    const currentScroll = scrollPosition.current;
+    const s = scrollPosition.current;
 
-    if (contentRef.current) {
-      contentRef.current.position.y = currentScroll;
-    }
+    if (contentRef.current) contentRef.current.position.y = s;
 
     if (thumbRef.current) {
-      const progress = maxScroll > 0 ? currentScroll / maxScroll : 0;
+      const progress = maxScroll > 0 ? s / maxScroll : 0;
       const travel = (VIEWPORT_HEIGHT - thumbHeight) / 2;
-
       thumbRef.current.position.y = travel - progress * travel * 2;
     }
 
-    // Toggle visibility directly via refs — zero React re-renders
-    const start = Math.max(
-      0,
-      Math.floor(currentScroll / ENTRY_SPACING) - VISIBLE_BUFFER,
-    );
-
+    const start = Math.max(0, Math.floor(s / ENTRY_SPACING) - VISIBLE_BUFFER);
     const end = Math.min(
       careers.length - 1,
-      Math.ceil((currentScroll + VIEWPORT_HEIGHT) / ENTRY_SPACING) +
-        VISIBLE_BUFFER,
+      Math.ceil((s + VIEWPORT_HEIGHT) / ENTRY_SPACING) + VISIBLE_BUFFER,
     );
-
     for (let i = 0; i < entryRefs.current.length; i++) {
       const ref = entryRefs.current[i];
       if (ref) ref.visible = i >= start && i <= end;
     }
   });
 
-  const handleWheel = (event: {
-    deltaY: number;
-    stopPropagation: () => void;
-  }) => {
-    event.stopPropagation();
-
-    targetScroll.current = THREE.MathUtils.clamp(
-      targetScroll.current + event.deltaY * SCROLL_SPEED,
-      0,
-      maxScroll,
-    );
-  };
-
-  const handleThumbHover = useCallback(() => {
-    if (!isDragging.current) {
-      gl.domElement.style.cursor = 'grab';
-    }
-  }, [gl]);
-
-  const handleThumbUnhover = useCallback(() => {
-    if (!isDragging.current) {
-      gl.domElement.style.cursor = '';
-    }
-  }, [gl]);
-
   return (
     <group>
-      {/* Invisible scroll interaction area (also captures drag moves) */}
+      {/* Invisible interaction surface */}
       <mesh
         position={[0, 0, 0.15]}
         onWheel={handleWheel}
@@ -324,37 +268,28 @@ const WorkHistory = () => {
         />
       </mesh>
 
-      {/* Career content — all entries stay mounted, visibility toggled via refs */}
+      {/* Scrollable content */}
       <group ref={contentRef}>
         {careers.map((career, index) => {
           const entryY =
             VIEWPORT_HEIGHT / 2 - ENTRY_HEIGHT / 2 - index * ENTRY_SPACING;
-
           const nextCareer = careers[index + 1];
-
-          // Determine the connecting line color from both adjacent careers
-          const currentIsActive = isCurrent(career);
-          const nextIsActive = nextCareer ? isCurrent(nextCareer) : false;
-
           const lineColor: 'colorI' | 'colorII' | 'gradient' =
-            currentIsActive && nextIsActive
+            isCurrent(career) && nextCareer && isCurrent(nextCareer)
               ? 'colorI'
-              : currentIsActive && !nextIsActive
+              : isCurrent(career) && nextCareer && !isCurrent(nextCareer)
                 ? 'gradient'
                 : 'colorII';
 
           return (
             <group key={`${career.company}-${index}`}>
-              {/* Dotted connecting line */}
               {nextCareer && (
                 <group position={[-1.04, entryY, 0.01]}>
                   <TimelineLine height={ENTRY_SPACING} color={lineColor} />
                 </group>
               )}
-
-              {/* Career entry */}
               <group
-                ref={(el: THREE.Group | null) => {
+                ref={(el) => {
                   entryRefs.current[index] = el;
                 }}
               >
@@ -370,13 +305,13 @@ const WorkHistory = () => {
         })}
       </group>
 
-      {/* Scrollbar track (clickable — jumps to position) */}
-      <mesh ref={trackRef} position={[1.1, 0, 0.08]} onClick={handleTrackClick}>
+      {/* Scrollbar track */}
+      <mesh position={[1.1, 0, 0.08]} onClick={handleTrackClick}>
         <planeGeometry args={[0.01, VIEWPORT_HEIGHT]} />
         <meshBasicMaterial color="#263329" />
       </mesh>
 
-      {/* Scrollbar thumb (draggable) */}
+      {/* Scrollbar thumb */}
       <mesh
         ref={thumbRef}
         position={[1.1, 0, 0.1]}

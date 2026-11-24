@@ -17,9 +17,7 @@ const PreloadCareerFonts = () => {
           font,
           characters: FONT_CHARACTERS,
         },
-        () => {
-          console.log(`Font preloaded: ${font}`);
-        },
+        () => {},
       );
     });
   }, []);

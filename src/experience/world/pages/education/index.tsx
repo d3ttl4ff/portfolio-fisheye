@@ -1,1 +1,1 @@
-export { default as Education } from './Education';
+// Education page — coming soon

@@ -14,35 +14,23 @@ type Props = {
   clippingPlanes: THREE.Plane[];
 };
 
-// Suppliments
 const PulsatingDot = () => {
   const pulseRef = useRef<THREE.Mesh>(null);
-  const pulseRingRef = useRef<THREE.Mesh>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
     if (!pulseRef.current) return;
-
-    const duration = 1.5; // Time for one complete pulse
-    const progress = (clock.getElapsedTime() % duration) / duration;
-
-    // Expand from original size to maximum size
-    const scale = 0 + progress * 4.5;
-    pulseRef.current?.scale.setScalar(scale);
-
-    // Fade out as it expands
-    const material = pulseRef.current?.material as THREE.MeshBasicMaterial;
-    material.opacity = 0.7 * (1 - progress);
-
-    if (pulseRingRef.current) {
-      pulseRingRef.current.rotation.z += 0.03;
-    }
+    const progress = (clock.getElapsedTime() % 1.5) / 1.5;
+    pulseRef.current.scale.setScalar(progress * 4.5);
+    (pulseRef.current.material as THREE.MeshBasicMaterial).opacity =
+      0.7 * (1 - progress);
+    if (ringRef.current) ringRef.current.rotation.z += delta * 1.8; // delta-corrected
   });
 
   return (
     <group>
-      {/* Expanding, fading ring */}
       <mesh ref={pulseRef}>
-        <sphereGeometry args={[0.009, 16, 16]} />
+        <sphereGeometry args={[0.009, 12, 12]} />
         <meshBasicMaterial
           color={COLORS.COLORI}
           transparent
@@ -50,23 +38,20 @@ const PulsatingDot = () => {
           depthWrite={false}
         />
       </mesh>
-
-      {/* Solid center dot */}
-      <mesh ref={pulseRingRef}>
+      <mesh ref={ringRef}>
         <ringGeometry args={[0.0145, 0.018, 8, 8, 1, 5]} />
         <meshBasicMaterial color={COLORS.COLORI} />
       </mesh>
-
       <mesh>
-        <sphereGeometry args={[0.006, 16, 16]} />
+        <sphereGeometry args={[0.006, 12, 12]} />
         <meshBasicMaterial color={COLORS.COLORI} />
       </mesh>
     </group>
   );
 };
 
-const TimelineDot = ({ active }: { active: boolean }) => {
-  return active ? (
+const TimelineDot = ({ active }: { active: boolean }) =>
+  active ? (
     <PulsatingDot />
   ) : (
     <group>
@@ -74,53 +59,39 @@ const TimelineDot = ({ active }: { active: boolean }) => {
         <ringGeometry args={[0.0145, 0.018, 8, 8, 1]} />
         <meshBasicMaterial color={COLORS.COLORII} />
       </mesh>
-
       <mesh>
-        <sphereGeometry args={[0.006, 16, 16]} />
+        <sphereGeometry args={[0.006, 12, 12]} />
         <meshBasicMaterial color={COLORS.COLORII} />
       </mesh>
     </group>
   );
-};
 
-// Main
-const CareerEntry = memo(({ index, career, y, clippingPlanes }: Props) => {
-  const entryRef = useRef<THREE.Group>(null);
+const CareerEntry = memo(({ career, y, clippingPlanes }: Props) => {
+  const active = career.endDate.toLowerCase() === 'current';
+  const statusColor = active ? COLORS.COLORI : COLORS.COLORII;
+
   const companyTextWidth = Math.max(0.1, career.company.length * 0.0185 + 0.08);
-
-  const zPos = -0.01;
-
   const positionWidth = 0.9;
   const positionDividerWidth = 0.35;
   const dateWidth = 0.5;
-  const companyWidth = 0.6;
-
-  const descriptionText = career.desc
-    .map((description) => `•  ${description}`)
-    .join('\n');
+  const descriptionText = career.desc.map((d) => `•  ${d}`).join('\n');
 
   return (
-    <group ref={entryRef} position={[0, y, 0]}>
-      {/* Position and dates */}
+    <group position={[0, y, 0]}>
+      {/* Row 1: Position + dates */}
       <group>
         <group position={[-1.04, 0, 0.01]}>
-          <TimelineDot active={career.endDate.toLowerCase() == 'current'} />
+          <TimelineDot active={active} />
         </group>
 
-        <mesh position={[positionWidth / 2 - 1, 0, zPos]}>
+        <mesh position={[positionWidth / 2 - 1, 0, -0.01]}>
           <RoundedBox
             args={[positionWidth, 0.08, 0.01]}
             radius={0.005}
             smoothness={2}
             bevelSegments={2}
           >
-            <meshBasicMaterial
-              color={
-                career.endDate.toLowerCase() == 'current'
-                  ? COLORS.COLORI
-                  : COLORS.COLORII
-              }
-            />
+            <meshBasicMaterial color={statusColor} />
           </RoundedBox>
         </mesh>
 
@@ -133,45 +104,31 @@ const CareerEntry = memo(({ index, career, y, clippingPlanes }: Props) => {
         </CareerText>
 
         <mesh position={[positionDividerWidth / 2 - 0.05, 0, -0.01]}>
-          <planeGeometry args={[positionDividerWidth, 0.005]} />
-          <meshBasicMaterial
-            color={
-              career.endDate.toLowerCase() == 'current'
-                ? COLORS.COLORI
-                : COLORS.COLORII
-            }
-          />
+          <planeGeometry args={[positionDividerWidth, 0.003]} />
+          <meshBasicMaterial color={statusColor} />
         </mesh>
 
         <CareerText
           position={[dateWidth / 2 + 0.6, 0, -0.05]}
           fontSize={0.055}
-          color={
-            career.endDate.toLowerCase() == 'current'
-              ? COLORS.COLORI
-              : COLORS.COLORII
-          }
+          color={statusColor}
           anchorX="right"
         >
           {`${career.startDate.toUpperCase()}  -  ${career.endDate.toUpperCase()}`}
         </CareerText>
       </group>
 
-      {/* Company and work mode */}
+      {/* Row 2: Company + work mode */}
       <group position={[-0.99, -0.075, 0]}>
         <CareerText
           font="Blender Pro Medium.ttf"
           fontSize={0.05}
-          color={
-            career.endDate.toLowerCase() == 'current'
-              ? COLORS.COLORI
-              : COLORS.COLORII
-          }
+          color={statusColor}
         >
-          {`@`}
+          {'@'}
         </CareerText>
 
-        <mesh position={[companyTextWidth / 2 + 0.04, 0, zPos]}>
+        <mesh position={[companyTextWidth / 2 + 0.04, 0, -0.01]}>
           <RoundedBox
             args={[companyTextWidth, 0.05, 0.01]}
             radius={0.005}
@@ -188,7 +145,6 @@ const CareerEntry = memo(({ index, career, y, clippingPlanes }: Props) => {
           </CareerText>
         </group>
 
-        {/* Work mode */}
         <group position={[0.08 + companyTextWidth, 0, 0]}>
           <CareerText
             position={[-0.015, 0, 0]}
@@ -196,42 +152,35 @@ const CareerEntry = memo(({ index, career, y, clippingPlanes }: Props) => {
             fontSize={0.045}
             color={COLORS.WHITE}
           >
-            {career.mode.toLowerCase() === 'remote'
+            {career.mode === 'Remote'
               ? '📡'
-              : career.mode.toLowerCase() === 'hybrid'
+              : career.mode === 'Hybrid'
                 ? '🛸'
                 : '🚕'}
           </CareerText>
-
           <group position={[0.055, 0, 0]}>
             <CareerText
               font="Blender Pro Medium.ttf"
               fontSize={0.045}
               color={COLORS.WHITE}
             >
-              {`${career.mode}`}
+              {career.mode}
             </CareerText>
           </group>
         </group>
 
-        <group position={[dateWidth / 2 + 0.6 + 1, 0, -0.05]}>
-          <CareerText
-            position={[0, 0, 0]}
-            font={'Blender Pro Medium.ttf'}
-            fontSize={0.045}
-            color={
-              career.endDate.toLowerCase() == 'current'
-                ? COLORS.COLORI
-                : COLORS.COLORII
-            }
-            anchorX="right"
-          >
-            {`${career.location.toUpperCase()} ◌ ${career.country}`}
-          </CareerText>
-        </group>
+        <CareerText
+          position={[dateWidth / 2 + 0.6 + 1, 0, -0.05]}
+          font="Blender Pro Medium.ttf"
+          fontSize={0.045}
+          color={statusColor}
+          anchorX="right"
+        >
+          {`${career.location.toUpperCase()} ◌ ${career.country}`}
+        </CareerText>
       </group>
 
-      {/* Description - one text mesh instead of several */}
+      {/* Row 3: Description */}
       <group position={[-1, -0.14, 0]}>
         <CareerText
           position={[0.05, 0, 0]}
@@ -248,5 +197,4 @@ const CareerEntry = memo(({ index, career, y, clippingPlanes }: Props) => {
 });
 
 CareerEntry.displayName = 'CareerEntry';
-
 export default CareerEntry;
