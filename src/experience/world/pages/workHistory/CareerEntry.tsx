@@ -127,7 +127,7 @@ const CareerEntry = memo(({ index, career, y, clippingPlanes }: Props) => {
           </RoundedBox>
         </mesh>
 
-        <CareerText position={[-0.95, 0, 0]} fontSize={0.06} color={BLACK}>
+        <CareerText position={[-0.97, 0, 0]} fontSize={0.06} color={BLACK}>
           {career.position.toUpperCase()}
         </CareerText>
 
